@@ -23,7 +23,7 @@ Stepper myStepper(stepsPerRevolution, 32, 33, 34, 35);
 
 // LDR Sensor Configuration
 int ldrValue;
-const int ldrPin = 36;        // or A0
+const int ldrPin = 26;        // or A0
 const int ldrResolution = 12; // Could be 9-12
 
 void openBlinds()
@@ -85,9 +85,9 @@ void connectAWS()
   }
 
   // LED Turns Green When Connected to WiFi
-  analogWrite(PIN_RED, 0);
-  analogWrite(PIN_GREEN, 255);
-  analogWrite(PIN_BLUE, 0);
+  // analogWrite(PIN_RED, 0);
+  // analogWrite(PIN_GREEN, 255);
+  // analogWrite(PIN_BLUE, 0);
 
   // Configure WiFiClientSecure to use the AWS IoT device credentials
   net.setCACert(AWS_CERT_CA);
@@ -118,9 +118,9 @@ void connectAWS()
   Serial.println("AWS IoT Connected!");
 
   // LED Turns Blue When Connected to AWS
-  analogWrite(PIN_RED, 0);
-  analogWrite(PIN_GREEN, 0);
-  analogWrite(PIN_BLUE, 255);
+  // analogWrite(PIN_RED, 0);
+  // analogWrite(PIN_GREEN, 0);
+  // analogWrite(PIN_BLUE, 255);
 }
 
 void publishMessage()
@@ -144,20 +144,22 @@ void setup()
   pinMode(PIN_BLUE, OUTPUT);
 
   // LED Turns RED When Device is Turned On
-  analogWrite(PIN_RED, 255);
-  analogWrite(PIN_GREEN, 0);
-  analogWrite(PIN_BLUE, 0);
+  // analogWrite(PIN_RED, 255);
+  // analogWrite(PIN_GREEN, 0);
+  // analogWrite(PIN_BLUE, 0);
 
-  connectAWS();
+  //connectAWS();
 }
 
 void loop()
 {
   // analogReadResolution(ldrResolution);
   // ldrValue = analogRead(ldrPin);
-  ldrValue = digitalRead(ldrPin);
+  //ldrValue = digitalRead(ldrPin);
+  ldrValue = analogRead(ldrPin);
+  Serial.println(ldrValue);
 
-  publishMessage();
-  client.loop();
-  delay(5000);
+  //publishMessage();
+  //client.loop();
+  delay(2000);
 }
