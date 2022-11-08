@@ -1,3 +1,12 @@
+// Software Capstone - EvryHub Blinds
+//
+// @author  Joshua Symons-Webb
+// @id      000812836
+// 
+// I, Joshua Symons-Webb, 000812836 certify that this material is my original work. No
+// other person's work has been used without due acknowledgement.
+// 
+
 #include <Arduino.h>
 #include "secrets.h"
 #include <WiFiClientSecure.h>
@@ -25,6 +34,10 @@ PubSubClient client(net);
 #define upButtonPin 23
 #define downButtonPin 22
 
+// Up and Down Button States
+volatile bool upButtonState = false;
+volatile bool downButtonState = false;
+
 // Stepper Configuration (digital)
 int stepsPerRevolution = 500;
 Stepper myStepper(stepsPerRevolution, 27, 25, 26, 33); // IN1, IN3, IN2, IN4
@@ -33,21 +46,39 @@ Stepper myStepper(stepsPerRevolution, 27, 25, 26, 33); // IN1, IN3, IN2, IN4
 int ldrValue;
 const int ldrResolution = 12; // Could be 9-12
 
+// *********************************************************** 
+void IRAM_ATTR upButtonPressed()
+{
+  Serial.println("upButtonPressed!");
+  upButtonState = !upButtonState;
+}
+
+// *********************************************************** 
+void IRAM_ATTR downButtonPressed()
+{
+  Serial.println("downButtonPressed!");
+  downButtonState = !downButtonState;
+}
+
+// *********************************************************** 
 void openBlinds()
 {
   myStepper.step(stepsPerRevolution);
 }
 
+// *********************************************************** 
 void closeBlinds()
 {
   myStepper.step(-stepsPerRevolution);
 }
 
+// *********************************************************** 
 void configBlinds(int direction)
 {
   stepsPerRevolution = stepsPerRevolution + direction;
 }
 
+// *********************************************************** 
 void messageHandler(char *topic, byte *payload, unsigned int length)
 {
   StaticJsonDocument<200> doc;
@@ -76,6 +107,7 @@ void messageHandler(char *topic, byte *payload, unsigned int length)
   }
 }
 
+// *********************************************************** 
 void connectAWS()
 {
   // Configure WiFiClientSecure to use the AWS IoT device credentials
@@ -108,21 +140,22 @@ void connectAWS()
   Serial.println("AWS IoT Connected!");
 }
 
+// *********************************************************** 
 void publishMessage()
 {
   StaticJsonDocument<200> doc;
   doc["device"] = "blinds";
   doc["action"] = "light";
-  doc["value"]  = String(ldrValue);
+  doc["value"] = String(ldrValue);
   char jsonBuffer[512];
   serializeJson(doc, jsonBuffer); // print to client
 
   client.publish(AWS_IOT_PUBLISH_TOPIC, jsonBuffer);
 }
 
-void otaSetup()
+// *********************************************************** 
+void wifiSetup()
 {
-  Serial.println("Booting");
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
@@ -134,7 +167,11 @@ void otaSetup()
     Serial.print(".");
   }
   digitalWrite(LED_PIN, HIGH);
+}
 
+// *********************************************************** 
+void otaSetup()
+{
   ArduinoOTA
       .onStart([]()
                {
@@ -166,19 +203,27 @@ void otaSetup()
   Serial.println(WiFi.localIP());
 }
 
+// *********************************************************** 
 void checkInput()
 {
-  while (digitalRead(upButtonPin) == LOW)
-  {
-    myStepper.step(stepsPerRevolution);
-  }
+  analogReadResolution(ldrResolution);
+  ldrValue = analogRead(LDR_PIN);
 
-  while (digitalRead(downButtonPin) == LOW)
+  if (upButtonState != true && downButtonState != true)
   {
-    myStepper.step(-stepsPerRevolution);
+    while (upButtonState == true)
+    {
+      openBlinds();
+    }
+
+    while (downButtonState == true)
+    {
+      closeBlinds();
+    }
   }
 }
 
+// *********************************************************** 
 void setup()
 {
   myStepper.setSpeed(60);
@@ -188,16 +233,18 @@ void setup()
   pinMode(downButtonPin, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
 
+  attachInterrupt(digitalRead(upButtonPin), upButtonPressed, CHANGE);
+  attachInterrupt(digitalRead(downButtonPin), upButtonPressed, CHANGE);
+
+  wifiSetup();
   otaSetup();
   connectAWS();
 }
 
+// *********************************************************** 
 void loop()
 {
   ArduinoOTA.handle();
-  analogReadResolution(ldrResolution);
-  ldrValue = analogRead(LDR_PIN);
-
   checkInput();
   publishMessage();
   client.loop();
