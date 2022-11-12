@@ -3,8 +3,8 @@
 #define SECRET
 #define THINGNAME "EvryHub-Blinds"
  
-const char WIFI_SSID[] = "BELL454";
-const char WIFI_PASSWORD[] = "CA1DD9512A54";
+const char WIFI_SSID[] = "Holman Home";
+const char WIFI_PASSWORD[] = "longhorn";
 const char AWS_IOT_ENDPOINT[] = "ah1nte2vfjrs0-ats.iot.ca-central-1.amazonaws.com";
 
 // Amazon Root CA 1

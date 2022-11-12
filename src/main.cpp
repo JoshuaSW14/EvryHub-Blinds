@@ -2,10 +2,10 @@
 //
 // @author  Joshua Symons-Webb
 // @id      000812836
-// 
+//
 // I, Joshua Symons-Webb, 000812836 certify that this material is my original work. No
 // other person's work has been used without due acknowledgement.
-// 
+//
 
 #include <Arduino.h>
 #include "secrets.h"
@@ -35,8 +35,7 @@ PubSubClient client(net);
 #define downButtonPin 22
 
 // Up and Down Button States
-volatile bool upButtonState = false;
-volatile bool downButtonState = false;
+volatile bool lightRissing;
 
 // Stepper Configuration (digital)
 int stepsPerRevolution = 500;
@@ -46,39 +45,29 @@ Stepper myStepper(stepsPerRevolution, 27, 25, 26, 33); // IN1, IN3, IN2, IN4
 int ldrValue;
 const int ldrResolution = 12; // Could be 9-12
 
-// *********************************************************** 
-void IRAM_ATTR upButtonPressed()
-{
-  Serial.println("upButtonPressed!");
-  upButtonState = !upButtonState;
+void IRAM_ATTR isr() {
+  lightRissing = true;
 }
 
-// *********************************************************** 
-void IRAM_ATTR downButtonPressed()
-{
-  Serial.println("downButtonPressed!");
-  downButtonState = !downButtonState;
-}
-
-// *********************************************************** 
+// ***********************************************************
 void openBlinds()
 {
   myStepper.step(stepsPerRevolution);
 }
 
-// *********************************************************** 
+// ***********************************************************
 void closeBlinds()
 {
   myStepper.step(-stepsPerRevolution);
 }
 
-// *********************************************************** 
+// ***********************************************************
 void configBlinds(int direction)
 {
   stepsPerRevolution = stepsPerRevolution + direction;
 }
 
-// *********************************************************** 
+// ***********************************************************
 void messageHandler(char *topic, byte *payload, unsigned int length)
 {
   StaticJsonDocument<200> doc;
@@ -107,7 +96,7 @@ void messageHandler(char *topic, byte *payload, unsigned int length)
   }
 }
 
-// *********************************************************** 
+// ***********************************************************
 void connectAWS()
 {
   // Configure WiFiClientSecure to use the AWS IoT device credentials
@@ -140,7 +129,7 @@ void connectAWS()
   Serial.println("AWS IoT Connected!");
 }
 
-// *********************************************************** 
+// ***********************************************************
 void publishMessage()
 {
   StaticJsonDocument<200> doc;
@@ -153,7 +142,7 @@ void publishMessage()
   client.publish(AWS_IOT_PUBLISH_TOPIC, jsonBuffer);
 }
 
-// *********************************************************** 
+// ***********************************************************
 void wifiSetup()
 {
   WiFi.mode(WIFI_STA);
@@ -169,7 +158,7 @@ void wifiSetup()
   digitalWrite(LED_PIN, HIGH);
 }
 
-// *********************************************************** 
+// ***********************************************************
 void otaSetup()
 {
   ArduinoOTA
@@ -203,27 +192,24 @@ void otaSetup()
   Serial.println(WiFi.localIP());
 }
 
-// *********************************************************** 
+// ***********************************************************
 void checkInput()
 {
   analogReadResolution(ldrResolution);
   ldrValue = analogRead(LDR_PIN);
 
-  if (upButtonState != true && downButtonState != true)
+  while (digitalRead(upButtonPin) == LOW && digitalRead(downButtonPin) == HIGH)
   {
-    while (upButtonState == true)
-    {
-      openBlinds();
-    }
+    openBlinds();
+  }
 
-    while (downButtonState == true)
-    {
-      closeBlinds();
-    }
+  while (digitalRead(downButtonPin) == LOW && digitalRead(upButtonPin) == HIGH)
+  {
+    closeBlinds();
   }
 }
 
-// *********************************************************** 
+// ***********************************************************
 void setup()
 {
   myStepper.setSpeed(60);
@@ -233,15 +219,12 @@ void setup()
   pinMode(downButtonPin, INPUT_PULLUP);
   pinMode(LED_PIN, OUTPUT);
 
-  attachInterrupt(digitalRead(upButtonPin), upButtonPressed, CHANGE);
-  attachInterrupt(digitalRead(downButtonPin), upButtonPressed, CHANGE);
-
   wifiSetup();
   otaSetup();
   connectAWS();
 }
 
-// *********************************************************** 
+// ***********************************************************
 void loop()
 {
   ArduinoOTA.handle();
