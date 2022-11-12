@@ -35,7 +35,7 @@ PubSubClient client(net);
 #define downButtonPin 22
 
 // Up and Down Button States
-volatile bool lightRissing;
+volatile bool lightrising;
 
 // Stepper Configuration (digital)
 int stepsPerRevolution = 500;
@@ -45,8 +45,8 @@ Stepper myStepper(stepsPerRevolution, 27, 25, 26, 33); // IN1, IN3, IN2, IN4
 int ldrValue;
 const int ldrResolution = 12; // Could be 9-12
 
-void IRAM_ATTR isr() {
-  lightRissing = true;
+void IRAM_ATTR lightRising() {
+  light = true;
 }
 
 // ***********************************************************
