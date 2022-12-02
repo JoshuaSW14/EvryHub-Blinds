@@ -5,7 +5,6 @@
 //
 // I, Joshua Symons-Webb, 000812836 certify that this material is my original work. No
 // other person's work has been used without due acknowledgement.
-//
 
 #include <Arduino.h>
 #include "secrets.h"
@@ -34,20 +33,16 @@ PubSubClient client(net);
 #define upButtonPin 23
 #define downButtonPin 22
 
-// Up and Down Button States
-volatile bool lightrising;
-
 // Stepper Configuration (digital)
-int stepsPerRevolution = 500;
+int stepsPerRevolution = 2048;
 Stepper myStepper(stepsPerRevolution, 27, 25, 26, 33); // IN1, IN3, IN2, IN4
 
 // Ambient Light Sensor
 int ldrValue;
 const int ldrResolution = 12; // Could be 9-12
 
-void IRAM_ATTR lightRising() {
-  light = true;
-}
+int sunlightThreshold = 0;
+int blindsConfig = 0;
 
 // ***********************************************************
 void openBlinds()
@@ -62,9 +57,21 @@ void closeBlinds()
 }
 
 // ***********************************************************
-void configBlinds(int direction)
+void configBlinds(int config)
+{
+  blindsConfig = config;
+}
+
+// ***********************************************************
+void blindsDirection(int direction)
 {
   stepsPerRevolution = stepsPerRevolution + direction;
+}
+
+// ***********************************************************
+void blindsThreshold(int threshold)
+{
+  sunlightThreshold = threshold;
 }
 
 // ***********************************************************
@@ -83,6 +90,16 @@ void messageHandler(char *topic, byte *payload, unsigned int length)
   {
     Serial.println("Configure EvryHub Blinds");
     configBlinds(atoi(value));
+  }
+  else if (String(device) == "blinds" && String(action) == "direction")
+  {
+    Serial.println("Blinds Direction");
+    blindsDirection(atoi(value));
+  }
+  else if (String(device) == "blinds" && String(action) == "threshold")
+  {
+    Serial.println("Blinds Threshold");
+    blindsThreshold(atoi(value));
   }
   else if (String(device) == "blinds" && String(action) == "raise")
   {
@@ -198,6 +215,14 @@ void checkInput()
   analogReadResolution(ldrResolution);
   ldrValue = analogRead(LDR_PIN);
 
+  if (blindsConfig == 2)
+  {
+    if (sunlightThreshold > ldrValue)
+    {
+      openBlinds();
+    }
+  }
+
   while (digitalRead(upButtonPin) == LOW && digitalRead(downButtonPin) == HIGH)
   {
     openBlinds();
@@ -212,7 +237,7 @@ void checkInput()
 // ***********************************************************
 void setup()
 {
-  myStepper.setSpeed(60);
+  myStepper.setSpeed(5);
   Serial.begin(115200);
 
   pinMode(upButtonPin, INPUT_PULLUP);
@@ -231,4 +256,5 @@ void loop()
   checkInput();
   publishMessage();
   client.loop();
+  delay(5000);
 }
